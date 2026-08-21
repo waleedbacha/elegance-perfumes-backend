@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to Elegance Perfumes</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+        background-color: #0a0a0a;
+        color: #ffffff;
+        line-height: 1.6;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .header {
+        background: linear-gradient(135deg, #0a0a0a 0%, #1a0a0a 100%);
+        padding: 40px 20px;
+        text-align: center;
+        border-bottom: 2px solid #8b0000;
+      }
+      .header h1 {
+        color: #d4af37;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        font-family: "Cinzel", serif;
+      }
+      .header p {
+        color: #9ca3af;
+        font-size: 14px;
+        margin-top: 5px;
+      }
+      .content {
+        background: #1a1a1a;
+        padding: 40px 30px;
+        border-radius: 0 0 12px 12px;
+        border: 1px solid #2a2a2a;
+      }
+      .content h2 {
+        color: #ffffff;
+        font-size: 24px;
+        margin-bottom: 16px;
+        font-family: "Cinzel", serif;
+      }
+      .content p {
+        color: #d1d5db;
+        font-size: 16px;
+        margin-bottom: 16px;
+      }
+      .content .highlight {
+        color: #8b0000;
+      }
+      .button {
+        display: inline-block;
+        background: #8b0000;
+        color: #ffffff !important;
+        padding: 14px 40px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        margin: 15px 0;
+        transition: background 0.3s ease;
+      }
+      .button:hover {
+        background: #cc0000;
+      }
+      .discount-code {
+        background: #0a0a0a;
+        padding: 15px;
+        text-align: center;
+        border-radius: 8px;
+        border: 1px solid #2a2a2a;
+        margin: 15px 0;
+      }
+      .discount-code strong {
+        font-size: 22px;
+        color: #d4af37;
+        letter-spacing: 2px;
+      }
+      .divider {
+        border: none;
+        border-top: 1px solid #2a2a2a;
+        margin: 20px 0;
+      }
+      .footer {
+        text-align: center;
+        padding: 20px;
+        color: #6b7280;
+        font-size: 12px;
+      }
+      .footer a {
+        color: #8b0000;
+        text-decoration: none;
+      }
+      .text-center {
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>ELEGANCE PERFUMES</h1>
+        <p>Luxury Fragrances for the Discerning</p>
+      </div>
+      <div class="content">
+        <h2>Welcome to Elegance Perfumes, {{name}}!</h2>
+
+        <p>
+          We're thrilled to have you join our community of fragrance
+          enthusiasts.
+        </p>
+
+        <p>
+          At Elegance Perfumes, we curate the finest luxury fragrances from
+          around the world. Each scent is carefully selected to help you find
+          your signature fragrance.
+        </p>
+
+        <div class="discount-code">
+          <p style="color: #9ca3af; margin-bottom: 8px">
+            🎁 As a welcome gift, enjoy
+            <strong style="color: #d4af37">10% OFF</strong> your first order
+          </p>
+          <strong>WELCOME10</strong>
+        </div>
+
+        <div class="text-center">
+          <a href="{{siteUrl}}/shop" class="button"> Start Shopping</a>
+        </div>
+
+        <hr class="divider" />
+
+        <p style="font-size: 14px; color: #9ca3af">
+          Need help? Reply to this email or contact us at
+          <a href="mailto:elegance.myperfume@gmail.com" style="color: #8b0000"
+            >elegance.myperfume@gmail.com</a
+          >
+        </p>
+
+        <p style="font-size: 14px; color: #9ca3af">
+          Warm regards,<br />
+          <strong style="color: #d4af37">The Elegance Perfumes Team</strong>
+        </p>
+      </div>
+      <div class="footer">
+        <p>
+          &copy; {{year}} Elegance Perfumes. All rights reserved.<br />
+          <a href="{{unsubscribeUrl}}">Unsubscribe</a> |
+          <a href="{{privacyUrl}}">Privacy Policy</a> |
+          <a href="{{supportUrl}}">Support</a>
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

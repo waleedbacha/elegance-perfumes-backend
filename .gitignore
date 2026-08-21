@@ -1,0 +1,66 @@
+# ============================================
+# BACKEND .gitignore
+# ============================================
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+out/
+
+# Logs
+logs/
+*.log
+
+# Uploads
+uploads/
+public/uploads/
+
+# Invoices
+invoices/
+
+# Testing
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+*.tmp
+
+# Misc
+*.pem
+*.p12
+*.pfx
+*.cert
+*.key
+*.crt
+
+# Database
+*.sqlite
+*.db
+*.sqlite-journal
+
+# Backup files
+*.backup
+*.old
+
+# Nodemon
+nodemon.json

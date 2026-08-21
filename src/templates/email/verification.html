@@ -1,0 +1,151 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verify Your Email</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+        background-color: #0a0a0a;
+        color: #ffffff;
+        line-height: 1.6;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .header {
+        background: linear-gradient(135deg, #0a0a0a 0%, #1a0a0a 100%);
+        padding: 40px 20px;
+        text-align: center;
+        border-bottom: 2px solid #8b0000;
+      }
+      .header h1 {
+        color: #d4af37;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        font-family: "Cinzel", serif;
+      }
+      .content {
+        background: #1a1a1a;
+        padding: 40px 30px;
+        border-radius: 0 0 12px 12px;
+        border: 1px solid #2a2a2a;
+      }
+      .content h2 {
+        color: #ffffff;
+        font-size: 24px;
+        margin-bottom: 16px;
+        font-family: "Cinzel", serif;
+      }
+      .content p {
+        color: #d1d5db;
+        font-size: 16px;
+        margin-bottom: 16px;
+      }
+      .button {
+        display: inline-block;
+        background: #8b0000;
+        color: #ffffff !important;
+        padding: 14px 40px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        margin: 15px 0;
+        transition: background 0.3s ease;
+      }
+      .button:hover {
+        background: #cc0000;
+      }
+      .divider {
+        border: none;
+        border-top: 1px solid #2a2a2a;
+        margin: 20px 0;
+      }
+      .footer {
+        text-align: center;
+        padding: 20px;
+        color: #6b7280;
+        font-size: 12px;
+      }
+      .footer a {
+        color: #8b0000;
+        text-decoration: none;
+      }
+      .text-center {
+        text-align: center;
+      }
+      .verification-box {
+        background: #0a0a0a;
+        padding: 20px;
+        border-radius: 8px;
+        border: 1px solid #2a2a2a;
+        margin: 15px 0;
+        word-break: break-all;
+      }
+      .verification-box p {
+        font-size: 12px;
+        color: #6b7280;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>ELEGANCE PERFUMES</h1>
+        <p>Verify Your Email Address</p>
+      </div>
+      <div class="content">
+        <h2>Verify Your Email Address</h2>
+
+        <p>Hi {{name}},</p>
+
+        <p>
+          Please verify your email address to complete your registration and
+          start enjoying our premium fragrances.
+        </p>
+
+        <div class="text-center">
+          <a href="{{verificationUrl}}" class="button">✅ Verify Email</a>
+        </div>
+
+        <p style="font-size: 14px; color: #9ca3af">
+          This link will expire in
+          <strong style="color: #d4af37">{{expiresIn}}</strong>.<br />
+          If you didn't create an account, you can safely ignore this email.
+        </p>
+
+        <div class="verification-box">
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="color: #9ca3af; font-size: 12px">{{verificationUrl}}</p>
+        </div>
+
+        <hr class="divider" />
+
+        <p style="font-size: 14px; color: #9ca3af">
+          Need help?
+          <a href="mailto:elegance.myperfume@gmail.com" style="color: #8b0000"
+            >Contact Support</a
+          >
+        </p>
+      </div>
+      <div class="footer">
+        <p>
+          &copy; {{year}} Elegance Perfumes. All rights reserved.<br />
+          <a href="{{unsubscribeUrl}}">Unsubscribe</a> |
+          <a href="{{privacyUrl}}">Privacy Policy</a>
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
