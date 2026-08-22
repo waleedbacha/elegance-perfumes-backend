@@ -81,14 +81,33 @@ app.use(
     },
   }),
 );
-console.log("🔍 FRONTEND_URL from env:", process.env.FRONTEND_URL);
-console.log("🔍 NODE_ENV:", process.env.NODE_ENV);
-// CORS
+
+const allowedOrigins = [
+  "https://elegance-perfumes.vercel.app",
+  "http://localhost:3000",
+  "https://elegance-perfumes.vercel.app/",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+console.log("✅ Allowed CORS origins:", allowedOrigins);
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn("❌ Blocked by CORS:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
     optionsSuccessStatus: 200,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   }),
 );
 
