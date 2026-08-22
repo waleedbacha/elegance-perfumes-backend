@@ -81,7 +81,8 @@ app.use(
     },
   }),
 );
-
+console.log("🔍 FRONTEND_URL from env:", process.env.FRONTEND_URL);
+console.log("🔍 NODE_ENV:", process.env.NODE_ENV);
 // CORS
 app.use(
   cors({
