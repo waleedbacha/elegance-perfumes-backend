@@ -39,12 +39,32 @@ const updateGlobalValidation = [
   body("global.site_keywords").optional().isString().trim(),
   body("global.default_og_image").optional().isString().trim(),
   body("global.twitter_handle").optional().isString().trim(),
-  body("global.google_analytics_id").optional().isString().trim(),
-  body("global.facebook_pixel_id").optional().isString().trim(),
-  body("global.google_verification").optional().isString().trim(),
-  body("global.bing_verification").optional().isString().trim(),
+  body("global.google_analytics_id")
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
+  body("global.google_tag_manager_id")
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
+  body("global.facebook_pixel_id")
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
+  body("global.google_verification")
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
+  body("global.bing_verification")
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
   body("global.robots.index").optional().isBoolean(),
   body("global.robots.follow").optional().isBoolean(),
+  body("global.robots.advanced")
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
 ];
 
 const updatePageValidation = [

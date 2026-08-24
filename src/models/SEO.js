@@ -479,46 +479,26 @@ const seoSchema = new mongoose.Schema(
     // ==========================================
     // AUDIT SETTINGS
     // ==========================================
+
     audit: {
       last_run: {
         type: Date,
         default: null,
       },
       results: {
-        total_pages: {
-          type: Number,
-          default: 0,
-        },
-        pages_with_meta: {
-          type: Number,
-          default: 0,
-        },
-        pages_without_meta: {
-          type: Number,
-          default: 0,
-        },
-        images_with_alt: {
-          type: Number,
-          default: 0,
-        },
-        images_without_alt: {
-          type: Number,
-          default: 0,
-        },
-        broken_links: {
-          type: Number,
-          default: 0,
-        },
-        total_internal_links: {
-          type: Number,
-          default: 0,
-        },
-        score: {
-          type: Number,
-          default: 0,
-          min: 0,
-          max: 100,
-        },
+        total_pages: { type: Number, default: 0 },
+        pages_with_meta: { type: Number, default: 0 },
+        pages_without_meta: { type: Number, default: 0 },
+        total_products: { type: Number, default: 0 },
+        products_with_meta: { type: Number, default: 0 },
+        products_without_meta: { type: Number, default: 0 },
+        images_with_alt: { type: Number, default: 0 },
+        images_without_alt: { type: Number, default: 0 },
+        broken_links: { type: Number, default: 0 },
+        total_internal_links: { type: Number, default: 0 },
+        score: { type: Number, default: 0, min: 0, max: 100 },
+        meta_coverage: { type: Number, default: 0 },
+        image_coverage: { type: Number, default: 0 },
         issues: [
           {
             type: {
@@ -531,12 +511,8 @@ const seoSchema = new mongoose.Schema(
                 "long_description",
               ],
             },
-            page: {
-              type: String,
-            },
-            message: {
-              type: String,
-            },
+            page: { type: String },
+            message: { type: String },
             severity: {
               type: String,
               enum: ["low", "medium", "high"],
