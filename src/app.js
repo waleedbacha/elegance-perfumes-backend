@@ -43,6 +43,7 @@ const navbarRoutes = require("./routes/navbarRoutes");
 const seoRoutes = require("./routes/seoRoutes");
 const cacheRoutes = require("./routes/cacheRoutes");
 const whatsappRoutes = require("./routes/whatsappRoutes");
+const popupRoutes = require("./routes/popupRoutes");
 
 // Initialize express app
 const app = express();
@@ -283,6 +284,7 @@ app.use(`${API_PREFIX}/categories`, categoryRoutes);
 app.use(`${API_PREFIX}/hero`, heroRoutes);
 app.use(`${API_PREFIX}/settings`, settingRoutes);
 app.use(`${API_PREFIX}/navbar`, navbarRoutes);
+app.use(`${API_PREFIX}/popups`, popupRoutes);
 app.use("/api/v1/seo", seoRoutes);
 app.use("/api/v1/cache", cacheRoutes);
 app.use("/api/v1/whatsapp", whatsappRoutes);
