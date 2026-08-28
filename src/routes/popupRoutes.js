@@ -5,7 +5,7 @@ const router = express.Router();
 const { body, param, query } = require("express-validator");
 const { validate } = require("../middleware/validation");
 const { protect, adminOnly } = require("../middleware/auth");
-const { upload } = require("../middleware/upload");
+const { upload, handleUploadError } = require("../middleware/upload");
 
 const {
   getActivePopup,
@@ -58,6 +58,7 @@ router.post(
   protect,
   adminOnly,
   upload.single("image"),
+  handleUploadError,
   popupValidation,
   validate,
   createPopup,
@@ -68,6 +69,7 @@ router.put(
   protect,
   adminOnly,
   upload.single("image"),
+  handleUploadError,
   popupValidation,
   validate,
   updatePopup,

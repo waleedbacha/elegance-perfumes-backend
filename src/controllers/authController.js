@@ -721,7 +721,7 @@ exports.resendVerification = async (req, res, next) => {
  * Google OAuth Login/Register
  */
 /**
- * Google OAuth Login/Register - Fixed for phone validation
+ * Google OAuth Login/Register - FIXED FOR PRODUCTION
  */
 exports.googleAuth = async (req, res, next) => {
   try {
@@ -747,25 +747,145 @@ exports.googleAuth = async (req, res, next) => {
       );
     }
 
-    // ✅ Exchange code for tokens
-    const { OAuth2Client } = require("google-auth-library");
-    const client = new OAuth2Client(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      "postmessage",
-    );
+    const axios = require("axios");
 
-    // ✅ Exchange the code for tokens
-    let tokens;
+    console.log("📤 Exchanging code for tokens...");
+
     try {
-      const response = await client.getToken(code);
-      tokens = response.tokens;
-      console.log("✅ Tokens received from Google");
-    } catch (tokenError) {
-      console.error(
-        "❌ Token exchange error:",
-        tokenError.response?.data || tokenError.message,
+      // ✅ Exchange code for tokens using axios
+      const tokenResponse = await axios.post(
+        "https://oauth2.googleapis.com/token",
+        {
+          code: code,
+          client_id: process.env.GOOGLE_CLIENT_ID,
+          client_secret: process.env.GOOGLE_CLIENT_SECRET,
+          redirect_uri: "postmessage",
+          grant_type: "authorization_code",
+        },
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          timeout: 10000,
+        },
       );
+
+      console.log("✅ Tokens received from Google");
+
+      if (!tokenResponse.data || !tokenResponse.data.id_token) {
+        console.error("❌ Invalid token response:", tokenResponse.data);
+        throw new AppError(
+          "Invalid token response from Google",
+          400,
+          "INVALID_TOKEN_RESPONSE",
+        );
+      }
+
+      // ✅ Get user info from Google using the access token
+      const userInfoResponse = await axios.get(
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        {
+          headers: {
+            Authorization: `Bearer ${tokenResponse.data.access_token}`,
+          },
+          timeout: 10000,
+        },
+      );
+
+      const userInfo = userInfoResponse.data;
+      console.log("✅ Google user info:", userInfo.email);
+
+      const { email, name, picture, sub: googleId } = userInfo;
+
+      if (!email) {
+        throw new AppError(
+          "Email not provided by Google",
+          400,
+          "GOOGLE_EMAIL_MISSING",
+        );
+      }
+
+      // ✅ Check if user exists
+      let user = await User.findOne({ email: email.toLowerCase() });
+
+      if (!user) {
+        console.log("📝 Creating new user from Google...");
+        user = new User({
+          name: name || "Google User",
+          email: email.toLowerCase(),
+          phone: null,
+          password: await bcryptUtils.hashPassword(
+            googleId + process.env.JWT_SECRET,
+          ),
+          isVerified: true,
+          emailVerified: true,
+          profilePicture: {
+            url: picture || "",
+            publicId: "google",
+          },
+        });
+
+        await user.save();
+        console.log("✅ New user created:", email);
+
+        // Create cart
+        await Cart.getOrCreateCart(user._id, true);
+
+        // Create wishlist
+        const wishlist = new Wishlist({ user: user._id });
+        await wishlist.save();
+
+        // Create scent profile
+        const scentProfile = new ScentProfile({ user: user._id });
+        await scentProfile.save();
+      } else {
+        console.log("✅ Existing user found:", email);
+        user.lastLogin = new Date();
+        await user.save({ validateBeforeSave: false });
+      }
+
+      // ✅ Generate tokens
+      const jwtToken = jwtUtils.generateToken({
+        id: user._id,
+        role: user.role,
+      });
+      const refreshToken = jwtUtils.generateRefreshToken({ id: user._id });
+
+      // Save refresh token
+      user.refreshTokens.push({
+        token: refreshToken,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      });
+      await user.save({ validateBeforeSave: false });
+
+      // Remove sensitive data
+      user.password = undefined;
+      user.refreshTokens = undefined;
+
+      console.log("✅ Google login successful for:", email);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          user,
+          token: jwtToken,
+          refreshToken,
+        },
+        message: "Google login successful",
+      });
+    } catch (tokenError) {
+      console.error("❌ Token exchange error:");
+
+      if (tokenError.response) {
+        console.error("Status:", tokenError.response.status);
+        console.error(
+          "Data:",
+          JSON.stringify(tokenError.response.data, null, 2),
+        );
+      } else {
+        console.error("Message:", tokenError.message);
+      }
+
       throw new AppError(
         "Failed to exchange authorization code: " +
           (tokenError.message || "Unknown error"),
@@ -773,91 +893,6 @@ exports.googleAuth = async (req, res, next) => {
         "TOKEN_EXCHANGE_FAILED",
       );
     }
-
-    // ✅ Verify the ID token
-    const ticket = await client.verifyIdToken({
-      idToken: tokens.id_token,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
-    const { email, name, picture, sub: googleId } = payload;
-
-    if (!email) {
-      throw new AppError(
-        "Email not provided by Google",
-        400,
-        "GOOGLE_EMAIL_MISSING",
-      );
-    }
-
-    console.log("✅ Google user verified:", email);
-
-    // ✅ Check if user exists
-    let user = await User.findOne({ email: email.toLowerCase() });
-
-    if (!user) {
-      // ✅ Create new user - phone is NOT required for Google users
-      user = new User({
-        name: name || "Google User",
-        email: email.toLowerCase(),
-        phone: null, // ✅ Set phone to null (optional)
-        password: await bcryptUtils.hashPassword(
-          googleId + process.env.JWT_SECRET,
-        ),
-        isVerified: true,
-        emailVerified: true,
-        profilePicture: {
-          url: picture || "",
-          publicId: "google",
-        },
-        // ✅ Skip phone validation for Google users
-      });
-
-      await user.save();
-      console.log("✅ New user created:", email);
-
-      // Create cart
-      await Cart.getOrCreateCart(user._id, true);
-
-      // Create wishlist
-      const wishlist = new Wishlist({ user: user._id });
-      await wishlist.save();
-
-      // Create scent profile
-      const scentProfile = new ScentProfile({ user: user._id });
-      await scentProfile.save();
-    } else {
-      console.log("✅ Existing user found:", email);
-      // Update user's last login
-      user.lastLogin = new Date();
-      await user.save({ validateBeforeSave: false });
-    }
-
-    // ✅ Generate tokens
-    const jwtToken = jwtUtils.generateToken({ id: user._id, role: user.role });
-    const refreshToken = jwtUtils.generateRefreshToken({ id: user._id });
-
-    // Save refresh token
-    user.refreshTokens.push({
-      token: refreshToken,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    });
-    await user.save({ validateBeforeSave: false });
-
-    // Remove sensitive data
-    user.password = undefined;
-    user.refreshTokens = undefined;
-
-    res.status(200).json({
-      success: true,
-      data: {
-        user,
-        token: jwtToken,
-        refreshToken,
-      },
-      message: "Google login successful",
-    });
   } catch (error) {
     console.error("❌ Google auth error:", error);
     next(error);

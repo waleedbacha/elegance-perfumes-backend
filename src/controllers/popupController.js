@@ -4,6 +4,9 @@ const Popup = require("../models/Popup");
 const Coupon = require("../models/Coupon");
 const Order = require("../models/Order");
 const { AppError } = require("../middleware/errorHandler");
+const axios = require("axios");
+const FormData = require("form-data");
+const crypto = require("crypto");
 
 // ============================================
 // PUBLIC - GET ACTIVE POPUP
@@ -31,7 +34,6 @@ exports.getActivePopup = async (req, res, next) => {
         .padStart(4, "0");
       couponCode = `${prefix}${random}`;
 
-      // Create actual coupon in database
       await Coupon.create({
         code: couponCode,
         name: popup.name || "Popup Discount",
@@ -48,7 +50,6 @@ exports.getActivePopup = async (req, res, next) => {
       });
     }
 
-    // Update view count
     await Popup.findByIdAndUpdate(popup._id, {
       $inc: { "analytics.views": 1 },
     });
@@ -137,39 +138,88 @@ exports.getPopup = async (req, res, next) => {
 // ============================================
 exports.createPopup = async (req, res, next) => {
   try {
-    const popupData = req.body;
-
-    // ✅ Parse JSON fields if sent as strings
-    if (typeof popupData.primaryButton === "string") {
-      popupData.primaryButton = JSON.parse(popupData.primaryButton);
-    }
-    if (typeof popupData.secondaryButton === "string") {
-      popupData.secondaryButton = JSON.parse(popupData.secondaryButton);
-    }
-    if (typeof popupData.coupon === "string") {
-      popupData.coupon = JSON.parse(popupData.coupon);
-    }
-    if (typeof popupData.targeting === "string") {
-      popupData.targeting = JSON.parse(popupData.targeting);
-    }
-    if (typeof popupData.style === "string") {
-      popupData.style = JSON.parse(popupData.style);
+    // Parse data from FormData
+    let popupData;
+    if (req.body.data) {
+      popupData =
+        typeof req.body.data === "string"
+          ? JSON.parse(req.body.data)
+          : req.body.data;
+    } else {
+      popupData = req.body;
     }
 
-    // Handle image upload (if any)
+    console.log("📦 Popup data:", popupData);
+    console.log("📸 Files received:", req.file ? 1 : 0);
+
+    // Parse JSON fields
+    const jsonFields = [
+      "primaryButton",
+      "secondaryButton",
+      "coupon",
+      "targeting",
+      "style",
+    ];
+    jsonFields.forEach((field) => {
+      if (typeof popupData[field] === "string") {
+        try {
+          popupData[field] = JSON.parse(popupData[field]);
+        } catch (e) {
+          console.warn(`⚠️ Failed to parse ${field}:`, e.message);
+        }
+      }
+    });
+
+    // Handle image upload - SAME AS CATEGORY ✅
     if (req.file) {
-      const cloudinary = require("../config/cloudinary");
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "elegance-perfumes/popups",
-      });
+      try {
+        console.log(`📸 Uploading popup image: ${req.file.originalname}`);
 
-      popupData.image = {
-        url: result.secure_url,
-        publicId: result.public_id,
-        width: result.width,
-        height: result.height,
-      };
-      popupData.useImage = true;
+        const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload`;
+
+        // Convert buffer to base64
+        const base64Image = req.file.buffer.toString("base64");
+        const dataUrl = `data:${req.file.mimetype};base64,${base64Image}`;
+
+        // Create form data
+        const form = new FormData();
+        form.append("file", dataUrl);
+        form.append(
+          "upload_preset",
+          process.env.CLOUDINARY_UPLOAD_PRESET || "elegance_perfumes",
+        );
+        form.append("folder", "elegance-perfumes/popups");
+
+        // Send to Cloudinary
+        const response = await axios.post(cloudinaryUrl, form, {
+          headers: { ...form.getHeaders() },
+          timeout: 60000,
+        });
+
+        const result = response.data;
+
+        if (result.error) {
+          console.error("❌ Cloudinary error:", result.error);
+          throw new Error(result.error.message);
+        }
+
+        popupData.image = {
+          url: result.secure_url,
+          publicId: result.public_id,
+          width: result.width,
+          height: result.height,
+        };
+        popupData.useImage = true;
+
+        console.log(`✅ Popup image uploaded: ${result.secure_url}`);
+      } catch (uploadError) {
+        console.error("❌ Image upload failed:", uploadError.message);
+        throw new AppError(
+          `Failed to upload image: ${uploadError.message}`,
+          500,
+          "UPLOAD_FAILED",
+        );
+      }
     }
 
     popupData.createdBy = req.user.id;
@@ -194,62 +244,155 @@ exports.createPopup = async (req, res, next) => {
 exports.updatePopup = async (req, res, next) => {
   try {
     const { id } = req.params;
-    let updates = req.body;
+
+    // Parse data from FormData
+    let updates;
+    if (req.body.data) {
+      updates =
+        typeof req.body.data === "string"
+          ? JSON.parse(req.body.data)
+          : req.body.data;
+    } else {
+      updates = req.body;
+    }
+
+    console.log("📦 Update data:", updates);
+    console.log("📸 Files received:", req.file ? 1 : 0);
 
     const popup = await Popup.findById(id);
     if (!popup) {
       throw new AppError("Popup not found", 404, "POPUP_NOT_FOUND");
     }
 
-    // ✅ Parse JSON fields if sent as strings
-    if (typeof updates.primaryButton === "string") {
-      updates.primaryButton = JSON.parse(updates.primaryButton);
-    }
-    if (typeof updates.secondaryButton === "string") {
-      updates.secondaryButton = JSON.parse(updates.secondaryButton);
-    }
-    if (typeof updates.coupon === "string") {
-      updates.coupon = JSON.parse(updates.coupon);
-    }
-    if (typeof updates.targeting === "string") {
-      updates.targeting = JSON.parse(updates.targeting);
-    }
-    if (typeof updates.style === "string") {
-      updates.style = JSON.parse(updates.style);
-    }
-
-    // Handle image upload
-    if (req.file) {
-      const cloudinary = require("../config/cloudinary");
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "elegance-perfumes/popups",
-      });
-
-      // Delete old image if exists
-      if (popup.image?.publicId) {
-        await cloudinary.uploader.destroy(popup.image.publicId);
+    // Parse JSON fields
+    const jsonFields = [
+      "primaryButton",
+      "secondaryButton",
+      "coupon",
+      "targeting",
+      "style",
+    ];
+    jsonFields.forEach((field) => {
+      if (typeof updates[field] === "string") {
+        try {
+          updates[field] = JSON.parse(updates[field]);
+        } catch (e) {
+          console.warn(`⚠️ Failed to parse ${field}:`, e.message);
+        }
       }
+    });
 
-      updates.image = {
-        url: result.secure_url,
-        publicId: result.public_id,
-        width: result.width,
-        height: result.height,
-      };
-      updates.useImage = true;
+    // Handle image upload - SAME AS CATEGORY ✅
+    if (req.file) {
+      try {
+        console.log(`📸 Uploading popup image: ${req.file.originalname}`);
+
+        const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload`;
+
+        // Delete old image if exists
+        if (
+          popup.image?.publicId &&
+          !popup.image.publicId.startsWith("default/")
+        ) {
+          try {
+            const deleteUrl = `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/destroy`;
+            const timestamp = Math.floor(Date.now() / 1000);
+            const signature = crypto
+              .createHash("sha256")
+              .update(
+                `public_id=${popup.image.publicId}&timestamp=${timestamp}${process.env.CLOUDINARY_API_SECRET}`,
+              )
+              .digest("hex");
+
+            await axios.post(deleteUrl, {
+              public_id: popup.image.publicId,
+              timestamp: timestamp,
+              signature: signature,
+              api_key: process.env.CLOUDINARY_API_KEY,
+            });
+            console.log(`🗑️ Deleted old image: ${popup.image.publicId}`);
+          } catch (deleteError) {
+            console.error(
+              "❌ Failed to delete old image:",
+              deleteError.message,
+            );
+          }
+        }
+
+        // Upload new image
+        const base64Image = req.file.buffer.toString("base64");
+        const dataUrl = `data:${req.file.mimetype};base64,${base64Image}`;
+
+        const form = new FormData();
+        form.append("file", dataUrl);
+        form.append(
+          "upload_preset",
+          process.env.CLOUDINARY_UPLOAD_PRESET || "elegance_perfumes",
+        );
+        form.append("folder", "elegance-perfumes/popups");
+
+        const response = await axios.post(cloudinaryUrl, form, {
+          headers: { ...form.getHeaders() },
+          timeout: 60000,
+        });
+
+        const result = response.data;
+
+        if (result.error) {
+          console.error("❌ Cloudinary error:", result.error);
+          throw new Error(result.error.message);
+        }
+
+        updates.image = {
+          url: result.secure_url,
+          publicId: result.public_id,
+          width: result.width,
+          height: result.height,
+        };
+        updates.useImage = true;
+
+        console.log(`✅ Popup image uploaded: ${result.secure_url}`);
+      } catch (uploadError) {
+        console.error("❌ Image upload failed:", uploadError.message);
+        throw new AppError(
+          `Failed to upload image: ${uploadError.message}`,
+          500,
+          "UPLOAD_FAILED",
+        );
+      }
     }
 
     // Remove image if useImage is false
     if (updates.useImage === false) {
-      if (popup.image?.publicId) {
-        const cloudinary = require("../config/cloudinary");
-        await cloudinary.uploader.destroy(popup.image.publicId);
+      if (
+        popup.image?.publicId &&
+        !popup.image.publicId.startsWith("default/")
+      ) {
+        try {
+          const deleteUrl = `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/destroy`;
+          const timestamp = Math.floor(Date.now() / 1000);
+          const signature = crypto
+            .createHash("sha256")
+            .update(
+              `public_id=${popup.image.publicId}&timestamp=${timestamp}${process.env.CLOUDINARY_API_SECRET}`,
+            )
+            .digest("hex");
+
+          await axios.post(deleteUrl, {
+            public_id: popup.image.publicId,
+            timestamp: timestamp,
+            signature: signature,
+            api_key: process.env.CLOUDINARY_API_KEY,
+          });
+          console.log(`🗑️ Deleted image: ${popup.image.publicId}`);
+        } catch (deleteError) {
+          console.error("❌ Failed to delete image:", deleteError.message);
+        }
       }
       updates.image = { url: "", publicId: "" };
     }
 
     updates.updatedBy = req.user.id;
-
     Object.assign(popup, updates);
     await popup.save();
 
@@ -277,9 +420,27 @@ exports.deletePopup = async (req, res, next) => {
     }
 
     // Delete image from Cloudinary
-    if (popup.image?.publicId) {
-      const cloudinary = require("../config/cloudinary");
-      await cloudinary.uploader.destroy(popup.image.publicId);
+    if (popup.image?.publicId && !popup.image.publicId.startsWith("default/")) {
+      try {
+        const deleteUrl = `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/destroy`;
+        const timestamp = Math.floor(Date.now() / 1000);
+        const signature = crypto
+          .createHash("sha256")
+          .update(
+            `public_id=${popup.image.publicId}&timestamp=${timestamp}${process.env.CLOUDINARY_API_SECRET}`,
+          )
+          .digest("hex");
+
+        await axios.post(deleteUrl, {
+          public_id: popup.image.publicId,
+          timestamp: timestamp,
+          signature: signature,
+          api_key: process.env.CLOUDINARY_API_KEY,
+        });
+        console.log(`🗑️ Deleted image: ${popup.image.publicId}`);
+      } catch (deleteError) {
+        console.error("❌ Failed to delete image:", deleteError.message);
+      }
     }
 
     await popup.deleteOne();
