@@ -440,6 +440,11 @@ orderSchema.virtual("totalItems").get(function () {
 // ==========================================
 // models/Order.js - Complete pre-save hook
 
+// Order.js - FIXED pre-save hook
+
+// ==========================================
+// PRE-SAVE HOOKS - SIMPLIFIED
+// ==========================================
 orderSchema.pre("save", function (next) {
   // Generate order number if not provided
   if (!this.orderNumber) {
@@ -450,30 +455,16 @@ orderSchema.pre("save", function (next) {
     this.orderNumber = `ORD-${timestamp}-${random}`;
   }
 
-  // ✅ Calculate product discount from items
-  if (this.items && this.items.length > 0) {
-    this.productDiscount = this.items.reduce((sum, item) => {
-      return sum + (item.discount || 0) * (item.quantity || 1);
-    }, 0);
-  }
-
-  // ✅ Calculate coupon discount if coupon exists
-  if (this.coupon && this.coupon.code) {
-    if (this.coupon.type === "percentage") {
-      this.couponDiscount = (this.subtotal * this.coupon.discount) / 100;
-    } else {
-      this.couponDiscount = this.coupon.discount;
-    }
-  } else {
-    this.couponDiscount = 0;
-  }
-
-  // ✅ Calculate total discount (product + coupon)
+  // ✅ ONLY calculate total from the provided fields
+  // The controller already calculated productDiscount and couponDiscount correctly
   this.discount = (this.productDiscount || 0) + (this.couponDiscount || 0);
 
-  // ✅ Recalculate total (subtotal - couponDiscount + shipping)
-  // Tax is removed, so no tax calculation
-  this.total = this.subtotal - this.couponDiscount + (this.shipping || 0);
+  // ✅ Total = subtotal - productDiscount - couponDiscount + shipping
+  this.total =
+    this.subtotal -
+    this.productDiscount -
+    this.couponDiscount +
+    (this.shipping || 0);
 
   // Add initial status history
   if (this.isNew && !this.statusHistory.length) {

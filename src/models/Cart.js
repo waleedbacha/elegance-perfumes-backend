@@ -58,6 +58,17 @@ const cartSchema = new mongoose.Schema(
           default: 0,
           min: 0,
         },
+        discountSource: {
+          type: String,
+          enum: ["product", "coupon", "manual"],
+          default: "product",
+        },
+        discountPercentage: {
+          type: Number,
+          default: 0,
+          min: 0,
+          max: 100,
+        },
 
         totalPrice: {
           type: Number,
@@ -299,13 +310,20 @@ cartSchema.virtual("totalBeforeDiscount").get(function () {
   return this.subtotal;
 });
 
+// Cart.js - pre-save hook
+
 cartSchema.pre("save", async function (next) {
   // Calculate subtotal from item totalPrice
   this.subtotal = this.items.reduce((sum, item) => sum + item.totalPrice, 0);
 
-  // ✅ Calculate product discount from items
+  // ✅ Calculate product discount from items - ONLY use item.discount
+  // This is the discount amount already calculated from the product
   this.productDiscount = this.items.reduce((sum, item) => {
-    return sum + (item.discount || 0) * (item.quantity || 1);
+    // ✅ Only add discount if it's from product (not coupon)
+    if (item.discountSource === "product") {
+      return sum + (item.discount || 0) * (item.quantity || 1);
+    }
+    return sum;
   }, 0);
 
   // ✅ Check if coupon is valid before applying
@@ -315,12 +333,10 @@ cartSchema.pre("save", async function (next) {
       const Coupon = mongoose.model("Coupon");
       const coupon = await Coupon.findById(this.coupon.couponId);
 
-      // ✅ If coupon doesn't exist or is not active, remove it
       if (!coupon || !coupon.isActive || new Date() > coupon.validUntil) {
         this.coupon = {};
       } else if (this.coupon.discount) {
         if (this.coupon.type === "percentage") {
-          // ✅ Limit to 90% max
           const discountPercent = Math.min(this.coupon.discount, 90);
           couponDiscount = (this.subtotal * discountPercent) / 100;
         } else {
@@ -328,32 +344,24 @@ cartSchema.pre("save", async function (next) {
         }
       }
     } catch (error) {
-      // If coupon lookup fails, remove it
       this.coupon = {};
     }
   }
 
-  // ✅ Set coupon discount
   this.couponDiscount = Math.min(couponDiscount, this.subtotal);
 
   // ✅ Total discount = product discount + coupon discount
   this.discount = this.productDiscount + this.couponDiscount;
 
-  // ❌ REMOVED TAX - Set to 0
   this.tax = 0;
 
-  // ✅ Delivery fee - PKR 200
-  // If shipping is already set (e.g., from previous calculation), keep it
-  // Otherwise set to 200
   if (!this.shipping || this.shipping === 0) {
     this.shipping = 200;
   }
 
-  // ✅ Calculate total (subtotal - couponDiscount + shipping)
-  // No tax included!
+  // ✅ Total = subtotal + shipping - couponDiscount (product discount is already in subtotal)
   this.total = this.subtotal - this.couponDiscount + this.shipping;
 
-  // Update last activity
   this.lastActivity = new Date();
 
   if (!this.expiresAt) {
@@ -371,6 +379,10 @@ cartSchema.pre("save", async function (next) {
 /**
  * Add item to cart
  */
+// Cart.js - addItem method
+
+// Cart.js - addItem method
+
 cartSchema.methods.addItem = async function (productData) {
   const {
     productId,
@@ -379,21 +391,20 @@ cartSchema.methods.addItem = async function (productData) {
     image,
     size,
     quantity,
-    price,
+    price, // Original price
     discountAmount = 0,
     finalPrice = price,
     notes,
+    discountPercentage = 0,
   } = productData;
 
-  console.log("📦 Adding item to cart:", {
-    productId,
-    name,
-    size,
-    quantity,
-    price,
-    discountAmount,
-    finalPrice,
-  });
+  console.log("📦 Adding item to cart:");
+  console.log(`  Product: ${name}`);
+  console.log(`  Size: ${size}`);
+  console.log(`  Quantity: ${quantity}`);
+  console.log(`  Original Price: ${price}`);
+  console.log(`  Discount Amount: ${discountAmount}`);
+  console.log(`  Final Price: ${finalPrice}`);
 
   // Check if item already exists
   const existingItem = this.items.find(
@@ -402,17 +413,14 @@ cartSchema.methods.addItem = async function (productData) {
   );
 
   if (existingItem) {
-    // Update existing item
     existingItem.quantity += quantity;
-    // Use final price for total
     existingItem.totalPrice =
       existingItem.quantity * (existingItem.price - existingItem.discount);
     console.log(
-      "📦 Updated existing item, new quantity:",
-      existingItem.quantity,
+      `📦 Updated existing item, new quantity: ${existingItem.quantity}`,
     );
   } else {
-    // Add new item with correct totalPrice
+    // ✅ Store EXACT values
     this.items.push({
       product: productId,
       name,
@@ -420,16 +428,17 @@ cartSchema.methods.addItem = async function (productData) {
       image,
       size,
       quantity,
-      price, // Original price
-      discount: discountAmount, // Discount amount in PKR
-      totalPrice: quantity * finalPrice, // Final price after product discount
+      price: price, // Original price
+      discount: discountAmount, // Exact discount amount
+      totalPrice: quantity * finalPrice, // ✅ Use the exact final price
       addedAt: new Date(),
       notes,
+      discountSource: "product",
+      discountPercentage: discountPercentage,
     });
-    console.log("📦 Added new item");
+    console.log(`📦 Added new item with discount: ${discountAmount}`);
   }
 
-  // Mark items as modified to ensure Mongoose detects changes
   this.markModified("items");
   this.updatedAt = new Date();
 
@@ -438,7 +447,6 @@ cartSchema.methods.addItem = async function (productData) {
 
   return this;
 };
-
 /**
  * Update item quantity
  */

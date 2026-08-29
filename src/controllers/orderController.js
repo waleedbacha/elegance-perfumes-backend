@@ -28,7 +28,7 @@ const {
  * Create order - Updated with WhatsApp integration
  */
 /**
- * Create order - Updated with WhatsApp integration and phone formatting
+ * Create order - COMPLETE FIXED VERSION
  */
 exports.createOrder = async (req, res, next) => {
   try {
@@ -56,44 +56,27 @@ exports.createOrder = async (req, res, next) => {
       throw new AppError("User not found", 404, "USER_NOT_FOUND");
     }
 
-    // ✅ Format phone for WhatsApp - REMOVE ALL NON-NUMERIC
+    // ✅ Format phone for WhatsApp
     const formatPhoneForWhatsApp = (phone) => {
       if (!phone) return null;
-      // Remove all non-numeric
       let cleaned = phone.replace(/\D/g, "");
-      // Remove leading 0
       if (cleaned.startsWith("0")) {
         cleaned = cleaned.substring(1);
       }
-      // Add 92 if not present
       if (cleaned.length > 0 && !cleaned.startsWith("92")) {
         cleaned = `92${cleaned}`;
       }
-      // Return only if valid (12 digits for Pakistan)
       if (cleaned.length === 12) {
         return cleaned;
       }
       return cleaned;
     };
 
-    // ✅ Format phone for display (user-friendly)
-    const formatPhoneForDisplay = (phone) => {
-      if (!phone) return "";
-      const cleaned = phone.replace(/\D/g, "");
-      if (cleaned.startsWith("92") && cleaned.length === 12) {
-        const num = cleaned.substring(2);
-        return `+${cleaned.substring(0, 2)} ${num.substring(0, 3)} ${num.substring(3, 6)} ${num.substring(6, 10)}`;
-      }
-      return `+${cleaned}`;
-    };
-
-    // ✅ Save phone to user if provided (for OAuth users who don't have phone)
+    // ✅ Save phone to user if provided
     let finalPhone = user.phone;
 
     if (customerPhone && customerPhone.trim() !== "") {
-      // ✅ Format the phone number
       finalPhone = formatPhoneForWhatsApp(customerPhone);
-
       if (!user.phone || user.phone === null) {
         user.phone = finalPhone;
         await user.save({ validateBeforeSave: false });
@@ -102,9 +85,7 @@ exports.createOrder = async (req, res, next) => {
         );
       }
     } else if (shippingAddress?.phone && shippingAddress.phone !== "") {
-      // ✅ Format the phone number
       finalPhone = formatPhoneForWhatsApp(shippingAddress.phone);
-
       if (!user.phone || user.phone === null) {
         user.phone = finalPhone;
         await user.save({ validateBeforeSave: false });
@@ -114,20 +95,22 @@ exports.createOrder = async (req, res, next) => {
       }
     }
 
-    // ✅ Final phone for order - if still empty, use a placeholder
     if (!finalPhone || finalPhone === null || finalPhone === "") {
       finalPhone = "N/A";
     }
 
-    // ✅ Also format shipping address phone
     if (shippingAddress?.phone) {
       shippingAddress.phone =
         formatPhoneForWhatsApp(shippingAddress.phone) || shippingAddress.phone;
     }
 
-    // Process items and validate stock
-    let subtotal = 0;
-    let totalProductDiscount = 0;
+    // ==========================================
+    // ✅ PROCESS ITEMS - FIXED
+    // ==========================================
+
+    let subtotal = 0; // ← ORIGINAL price before any discounts (comparePrice)
+    let totalProductDiscount = 0; // ← Total product discount
+    let subtotalAfterProductDiscount = 0; // ← After product discount
     const processedItems = [];
 
     for (const item of items) {
@@ -149,11 +132,30 @@ exports.createOrder = async (req, res, next) => {
         );
       }
 
-      const originalPrice = product.getPriceForSize(item.size);
-      const discountPercentage = product.discount || 0;
-      const discountAmount = (originalPrice * discountPercentage) / 100;
-      const finalPrice = originalPrice - discountAmount;
+      // ✅ Get price data from the size
+      const sizeItem = product.sizes.find((s) => s.size === item.size);
+
+      // ✅ ORIGINAL PRICE: Use comparePrice (or price if comparePrice not available)
+      const originalPrice =
+        sizeItem?.comparePrice ||
+        sizeItem?.price ||
+        product.comparePrice ||
+        product.price;
+
+      // ✅ SALE PRICE: Use price
+      const salePrice = sizeItem?.price || product.price;
+
+      // ✅ Calculate discount
+      const discountAmount = Math.max(0, originalPrice - salePrice);
+
+      // ✅ Final price per unit is the sale price
+      const finalPrice = salePrice;
       const totalPrice = finalPrice * item.quantity;
+
+      // ✅ Track ALL price components
+      subtotal += originalPrice * item.quantity; // ← ORIGINAL price (comparePrice)
+      totalProductDiscount += discountAmount * item.quantity; // ← Total discount
+      subtotalAfterProductDiscount += finalPrice * item.quantity; // ← After product discount
 
       processedItems.push({
         product: product._id,
@@ -161,33 +163,34 @@ exports.createOrder = async (req, res, next) => {
         brand: product.brand,
         size: item.size,
         quantity: item.quantity,
-        price: originalPrice,
-        discount: discountAmount,
-        total: totalPrice,
+        price: originalPrice, // Original price (comparePrice)
+        discount: discountAmount, // Discount per unit
+        total: totalPrice, // Final price after discount
         image:
           product.images?.find((img) => img.isMain)?.url ||
           product.images?.[0]?.url,
       });
-
-      subtotal += totalPrice;
-      totalProductDiscount += discountAmount * item.quantity;
     }
 
-    // Apply coupon
+    // ==========================================
+    // ✅ APPLY COUPON
+    // ==========================================
+
     let couponDiscount = 0;
     let couponData = null;
 
     if (couponCode) {
+      // ✅ Coupon should be applied on subtotal AFTER product discount
       const validation = await Coupon.validateCoupon(
         couponCode,
         user._id,
-        subtotal,
+        subtotalAfterProductDiscount, // ← Use price after product discount
         processedItems.map((item) => item.product),
       );
 
       if (validation.valid) {
         const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
-        couponDiscount = coupon.calculateDiscount(subtotal);
+        couponDiscount = coupon.calculateDiscount(subtotalAfterProductDiscount);
 
         couponData = {
           code: coupon.code,
@@ -207,13 +210,36 @@ exports.createOrder = async (req, res, next) => {
       }
     }
 
-    // Calculate totals
-    const totalAfterCoupon = subtotal - couponDiscount;
+    // ==========================================
+    // ✅ CALCULATE FINAL TOTALS
+    // ==========================================
+
     const shipping = 200;
+    const totalAfterProductDiscount = subtotal - totalProductDiscount;
+    const totalAfterCoupon = totalAfterProductDiscount - couponDiscount;
     const total = totalAfterCoupon + shipping;
+
+    // ==========================================
+    // ✅ DEBUG LOG - Check the values
+    // ==========================================
+
+    console.log("📊 ===== ORDER CALCULATION =====");
+    console.log(`  Original Subtotal (comparePrice): ${subtotal}`);
+    console.log(`  Product Discount: ${totalProductDiscount}`);
+    console.log(
+      `  Subtotal After Product Discount: ${totalAfterProductDiscount}`,
+    );
+    console.log(`  Coupon Discount: ${couponDiscount}`);
+    console.log(`  Shipping: ${shipping}`);
+    console.log(`  Final Total: ${total}`);
+    console.log("=================================");
 
     // Create order number
     const orderNumber = await Order.generateOrderNumber();
+
+    // ==========================================
+    // ✅ CREATE ORDER
+    // ==========================================
 
     const order = new Order({
       orderNumber,
@@ -240,13 +266,13 @@ exports.createOrder = async (req, res, next) => {
         sameAsShipping: true,
       },
       items: processedItems,
-      subtotal,
-      productDiscount: totalProductDiscount,
-      couponDiscount: couponDiscount,
+      subtotal: subtotal, // ← ORIGINAL price before any discounts
+      productDiscount: totalProductDiscount, // ← Total product discount
+      couponDiscount: couponDiscount, // ← Coupon discount
       coupon: couponData,
       shipping: shipping,
       tax: 0,
-      total,
+      total: total, // ← Final total
       paymentMethod,
       paymentStatus:
         paymentMethod === "cod"
@@ -261,27 +287,25 @@ exports.createOrder = async (req, res, next) => {
       referrer: req.get("referer"),
     });
 
+    // Save order
+    await order.save();
+
     // ==========================================
-    // UPDATE STOCK - FIXED VERSION
+    // UPDATE STOCK
     // ==========================================
 
     for (const item of processedItems) {
-      // 1. Update Product totalStock
       await Product.findByIdAndUpdate(item.product, {
         $inc: { totalStock: -item.quantity, purchasedCount: item.quantity },
       });
 
-      // 2. Update Inventory - PROPERLY
       let inventory = await Inventory.findOne({ product: item.product });
 
       if (!inventory) {
-        // Get product to know initial stock
         const product = await Product.findById(item.product);
-
-        // Create inventory with current stock
         inventory = new Inventory({
           product: item.product,
-          quantity: product.totalStock - item.quantity, // Current stock after deduction
+          quantity: product.totalStock - item.quantity,
           availableQuantity: product.totalStock - item.quantity,
           reservedQuantity: 0,
           lowStockThreshold: product.lowStockThreshold || 5,
@@ -307,7 +331,6 @@ exports.createOrder = async (req, res, next) => {
         });
         await inventory.save();
       } else {
-        // Use the model's deductStock method (triggers pre-save hook)
         await inventory.deductStock(
           item.quantity,
           `Order ${orderNumber}`,
@@ -342,7 +365,6 @@ exports.createOrder = async (req, res, next) => {
 
     // Generate invoice
     const invoiceUrl = await invoiceService.generateInvoice(order);
-
     order.invoiceUrl = invoiceUrl;
     await order.save();
 

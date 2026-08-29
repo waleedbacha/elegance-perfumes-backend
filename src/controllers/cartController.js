@@ -24,12 +24,18 @@ exports.getCart = async (req, res, next) => {
       cart = await Cart.findOne({
         user: userId,
         status: "active",
-      }).populate("items.product", "name brand price images discount totalStock");
+      }).populate(
+        "items.product",
+        "name brand price images discount totalStock",
+      );
     } else if (sessionId) {
       cart = await Cart.findOne({
         sessionId,
         status: "active",
-      }).populate("items.product", "name brand price images discount totalStock");
+      }).populate(
+        "items.product",
+        "name brand price images discount totalStock",
+      );
     }
 
     if (!cart) {
@@ -82,21 +88,24 @@ exports.getCart = async (req, res, next) => {
 /**
  * Add item to cart (Guest & Logged-in users)
  */
+// cartController.js - addToCart function
+
+// cartController.js - addToCart function - FIXED
+
 exports.addToCart = async (req, res, next) => {
   try {
     const { productId, size, quantity = 1 } = req.body;
     const userId = req.user?.id || null;
-    // ✅ Get session ID from cookies or generate one
     let sessionId = req.cookies?.sessionId;
 
-    // If no session ID and user is not logged in, generate one
     if (!sessionId && !userId) {
-      const crypto = require('crypto');
-      sessionId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
-      
-      // Set cookie
+      const crypto = require("crypto");
+      sessionId = crypto.randomUUID
+        ? crypto.randomUUID()
+        : Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
+
       res.cookie("sessionId", sessionId, {
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        maxAge: 30 * 24 * 60 * 60 * 1000,
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
@@ -112,13 +121,11 @@ exports.addToCart = async (req, res, next) => {
       );
     }
 
-    // Get product
     const product = await Product.findById(productId);
     if (!product) {
       throw new AppError("Product not found", 404, "PRODUCT_NOT_FOUND");
     }
 
-    // Check stock
     const available = product.hasStock(size, parseInt(quantity));
     if (!available) {
       throw new AppError(
@@ -128,13 +135,36 @@ exports.addToCart = async (req, res, next) => {
       );
     }
 
+    // ✅ Get price data
+    const sizeItem = product.sizes.find((s) => s.size === size);
+
+    // ✅ ORIGINAL PRICE: Use comparePrice or price
+    const originalPrice =
+      sizeItem?.comparePrice ||
+      sizeItem?.price ||
+      product.comparePrice ||
+      product.price;
+
+    // ✅ SALE PRICE: Use the actual price (this is the correct price)
+    const salePrice = sizeItem?.price || product.price;
+
+    // ✅ Calculate discount DIRECTLY from prices (no rounding!)
+    const discountAmount = originalPrice - salePrice;
+    const discountPercentage = (discountAmount / originalPrice) * 100;
+
+    console.log(`💰 Product: ${product.name}`);
+    console.log(`📦 Size: ${size}`);
+    console.log(`💵 Original Price: ${originalPrice}`);
+    console.log(`🏷️ Sale Price: ${salePrice}`);
+    console.log(`💸 Discount Amount: ${discountAmount}`);
+    console.log(`📊 Discount %: ${discountPercentage.toFixed(2)}%`);
+    console.log(`✅ Final Price: ${salePrice}`);
+
     // Get or create cart
     let cart;
     if (userId) {
-      // Logged in user
       cart = await Cart.findOne({ user: userId, status: "active" });
     } else if (sessionId) {
-      // Guest with session
       cart = await Cart.findOne({ sessionId, status: "active" });
     }
 
@@ -146,13 +176,7 @@ exports.addToCart = async (req, res, next) => {
       });
     }
 
-    // Get price for the specific size
-    const price = product.getPriceForSize(size);
-    const discountPercentage = product.discount || 0;
-    const discountAmount = (price * discountPercentage) / 100;
-    const finalPrice = price - discountAmount;
-
-    // Add item
+    // ✅ Add item with EXACT prices
     await cart.addItem({
       productId: product._id,
       name: product.name,
@@ -162,15 +186,15 @@ exports.addToCart = async (req, res, next) => {
         product.images?.[0]?.url,
       size,
       quantity: parseInt(quantity),
-      price: price,
-      discountAmount: discountAmount,
-      finalPrice: finalPrice,
+      price: originalPrice, // Original price
+      discountAmount: discountAmount, // Exact discount amount
+      finalPrice: salePrice, // ✅ Use the actual sale price
+      discountPercentage: discountPercentage,
     });
 
-    // Populate product details
     await cart.populate(
       "items.product",
-      "name brand price images discount totalStock",
+      "name brand price comparePrice images discount totalStock",
     );
 
     res.status(200).json({
