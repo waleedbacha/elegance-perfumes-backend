@@ -96,8 +96,12 @@ const productValidation = [
   body("name").notEmpty().withMessage("Product name is required"),
   body("brand").notEmpty().withMessage("Brand is required"),
   body("category")
-    .isIn(["men", "women", "unisex", "niche"])
-    .withMessage("Invalid category"),
+    .notEmpty()
+    .withMessage("Category is required")
+    .isString()
+    .withMessage("Category must be a string"),
+  // .isIn(["men", "women", "unisex", "niche"])
+  // .withMessage("Invalid category"),
   body("description").notEmpty().withMessage("Description is required"),
   body("price").isNumeric().withMessage("Price must be a number"),
   body("price")
@@ -123,8 +127,8 @@ const productUpdateValidation = [
     .withMessage("Product name cannot be empty"),
   body("category")
     .optional()
-    .isIn(["men", "women", "unisex", "niche"])
-    .withMessage("Invalid category"),
+    .isString()
+    .withMessage("Category must be a string"),
   body("discount")
     .optional()
     .custom((value) => value >= 0 && value <= 100)

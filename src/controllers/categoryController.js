@@ -313,6 +313,11 @@ exports.updateCategory = async (req, res, next) => {
 /**
  * Delete category (Admin)
  */
+// backend/src/controllers/categoryController.js
+
+/**
+ * Delete category (Admin) - FIXED
+ */
 exports.deleteCategory = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -322,12 +327,22 @@ exports.deleteCategory = async (req, res, next) => {
       throw new AppError("Category not found", 404, "CATEGORY_NOT_FOUND");
     }
 
-    // Delete image from Cloudinary
+    // ✅ Try to delete image from Cloudinary - but don't fail if it doesn't work
     if (
       category.image?.publicId &&
       !category.image.publicId.startsWith("default/")
     ) {
-      await cloudinary.deleteImage(category.image.publicId);
+      try {
+        await cloudinary.deleteImage(category.image.publicId);
+        console.log(
+          `✅ Image deleted from Cloudinary: ${category.image.publicId}`,
+        );
+      } catch (deleteError) {
+        // ✅ Log but continue - don't fail the delete
+        console.error("❌ Cloudinary delete error:", deleteError.message);
+        console.log("⚠️ Continuing with category deletion...");
+        // Image deletion failed, but we still want to delete the category
+      }
     }
 
     await category.deleteOne();
@@ -335,12 +350,18 @@ exports.deleteCategory = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Category deleted successfully",
+      // ✅ Include warning about image deletion
+      ...(category.image?.publicId &&
+        !category.image.publicId.startsWith("default/") && {
+          warning:
+            "Category deleted but image may still exist in Cloudinary. Please check manually.",
+        }),
     });
   } catch (error) {
+    console.error("❌ Delete category error:", error);
     next(error);
   }
 };
-
 /**
  * Bulk update category order
  */

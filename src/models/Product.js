@@ -48,7 +48,7 @@ const productSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, "Category is required"],
-      enum: Object.values(PRODUCT_CATEGORIES),
+      // enum: Object.values(PRODUCT_CATEGORIES),
     },
     subcategory: {
       type: String,

@@ -15,7 +15,7 @@ const categorySchema = new mongoose.Schema(
       required: [true, "Category name is required"],
       unique: true,
       trim: true,
-      enum: ["men", "women", "unisex"],
+      // enum: ["men", "women", "unisex"],
       lowercase: true,
     },
     displayName: {
@@ -192,6 +192,98 @@ categorySchema.statics.seedDefaults = async function () {
         alt: "Unisex fragrances",
       },
     },
+    // ✅ Add your new categories to seed
+    // {
+    //   name: "date-night",
+    //   displayName: "DATE NIGHT",
+    //   description: "Captivating. Romantic. Unforgettable.",
+    //   gradient: "rgba(139, 0, 0, 0.85)",
+    //   hoverGradient: "rgba(139, 0, 0, 0.95)",
+    //   order: 4,
+    //   image: {
+    //     url: "https://res.cloudinary.com/dcjhzgigb/image/upload/v1787486553/elegance-perfumes/products/b26aq2b3qvl6hjna0evy.jpg",
+    //     publicId: "default/date-night",
+    //     alt: "Date Night fragrances",
+    //   },
+    // },
+    // {
+    //   name: "office-wear",
+    //   displayName: "OFFICE WEAR",
+    //   description: "Professional. Polished. Powerful.",
+    //   gradient: "rgba(139, 0, 0, 0.85)",
+    //   hoverGradient: "rgba(139, 0, 0, 0.95)",
+    //   order: 5,
+    //   image: {
+    //     url: "https://res.cloudinary.com/dcjhzgigb/image/upload/v1787486353/elegance-perfumes/products/isekelztrbiic2hr65d2.jpg",
+    //     publicId: "default/office-wear",
+    //     alt: "Office Wear fragrances",
+    //   },
+    // },
+    // {
+    //   name: "wedding",
+    //   displayName: "WEDDING",
+    //   description: "Celebratory. Luxurious. Memorable.",
+    //   gradient: "rgba(139, 0, 0, 0.85)",
+    //   hoverGradient: "rgba(139, 0, 0, 0.95)",
+    //   order: 6,
+    //   image: {
+    //     url: "https://res.cloudinary.com/dcjhzgigb/image/upload/v1787486395/elegance-perfumes/products/gjwincwtlkm87gelz9vr.jpg",
+    //     publicId: "default/wedding",
+    //     alt: "Wedding fragrances",
+    //   },
+    // },
+    // {
+    //   name: "everyday-wear",
+    //   displayName: "EVERYDAY WEAR",
+    //   description: "Effortless. Versatile. Signature.",
+    //   gradient: "rgba(139, 0, 0, 0.85)",
+    //   hoverGradient: "rgba(139, 0, 0, 0.95)",
+    //   order: 7,
+    //   image: {
+    //     url: "https://res.cloudinary.com/dcjhzgigb/image/upload/v1787486318/elegance-perfumes/products/ov8ulaarz3xrmbetyjbh.jpg",
+    //     publicId: "default/everyday-wear",
+    //     alt: "Everyday Wear fragrances",
+    //   },
+    // },
+    // {
+    //   name: "evening",
+    //   displayName: "EVENING",
+    //   description: "Dramatic. Mysterious. Alluring.",
+    //   gradient: "rgba(139, 0, 0, 0.85)",
+    //   hoverGradient: "rgba(139, 0, 0, 0.95)",
+    //   order: 8,
+    //   image: {
+    //     url: "https://res.cloudinary.com/dcjhzgigb/image/upload/v1787485975/elegance-perfumes/products/o4ccvrrzubpdkue0rnqg.jpg",
+    //     publicId: "default/evening",
+    //     alt: "Evening fragrances",
+    //   },
+    // },
+    // {
+    //   name: "summer",
+    //   displayName: "SUMMER",
+    //   description: "Fresh. Vibrant. Radiant.",
+    //   gradient: "rgba(139, 0, 0, 0.85)",
+    //   hoverGradient: "rgba(139, 0, 0, 0.95)",
+    //   order: 9,
+    //   image: {
+    //     url: "https://res.cloudinary.com/dcjhzgigb/image/upload/v1787486148/elegance-perfumes/products/xewco1su0xcng3aimaib.jpg",
+    //     publicId: "default/summer",
+    //     alt: "Summer fragrances",
+    //   },
+    // },
+    // {
+    //   name: "winter",
+    //   displayName: "WINTER",
+    //   description: "Warm. Cozy. Intimate.",
+    //   gradient: "rgba(139, 0, 0, 0.85)",
+    //   hoverGradient: "rgba(139, 0, 0, 0.95)",
+    //   order: 10,
+    //   image: {
+    //     url: "https://res.cloudinary.com/dcjhzgigb/image/upload/v1787485975/elegance-perfumes/products/o4ccvrrzubpdkue0rnqg.jpg",
+    //     publicId: "default/winter",
+    //     alt: "Winter fragrances",
+    //   },
+    // },
   ];
 
   await this.insertMany(defaults);

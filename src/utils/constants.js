@@ -65,6 +65,13 @@ module.exports = {
     MEN: "men",
     WOMEN: "women",
     UNISEX: "unisex",
+    DATE_NIGHT: "date-night",
+    OFFICE_WEAR: "office-wear",
+    WEDDING: "wedding",
+    EVERYDAY_WEAR: "everyday-wear",
+    EVENING: "evening",
+    SUMMER: "summer",
+    WINTER: "winter",
     NICHE: "niche",
   },
 

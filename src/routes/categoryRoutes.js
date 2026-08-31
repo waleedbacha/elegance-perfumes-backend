@@ -30,7 +30,7 @@ const createCategoryValidation = [
   body("name")
     .notEmpty()
     .withMessage("Category name is required")
-    .isIn(["men", "women", "unisex"])
+    // .isIn(["men", "women", "unisex"])
     .withMessage("Category must be men, women, or unisex"),
   body("displayName")
     .notEmpty()
