@@ -85,9 +85,9 @@ app.use(
 );
 
 const allowedOrigins = [
-  "https://elegance-perfumes.vercel.app",
+  "https://hamama-perfumes.vercel.app",
   "http://localhost:3000",
-  "https://elegance-perfumes.vercel.app/",
+  "https://hamama-perfumes.vercel.app/",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
